@@ -30,6 +30,7 @@ GLOBAL_DOMAIN_TO_IMAGE = {
 }
 DEFAULT_FRONTEND_IMAGE = f"gitlab.cosy.bio:5050/cosybio/federated-learning/federated_db/frontend-shared/local-fl-net:{IMAGE_TAG}"
 DEFAULT_KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME = "keycloak-admin"
+overwrite_existing_secrets = False
 
 # ============================================================================
 # Helper Functions
@@ -97,12 +98,28 @@ def write_env_file(filepath: Path, comments: Optional[dict] = None, skip_when_ex
     Returns:
         True if successful, False if user aborted
     """
+    global overwrite_existing_secrets
     if filepath.exists():
         if skip_when_exists:
             print(f"Info: The file '{filepath}' already exists. Skipping.")
             return True
-        else:
-            print(f"Warning: The file '{filepath}' already exists. Overwriting with new settings.")
+        if overwrite_existing_secrets == False:
+            while True:
+                print(f"WARNING: Trying to write to '{filepath}' but it already exists.")
+                print("This means you already created a deployment before. Overwriting would break an EXISTING deployment, as as soon as the deployment has been started once")
+                print("The databases are initialized with the respective secrets")
+                overwrite_input = input(f"Do you want to overwrite files with new settings, potentially breaking an existing deployment? (y/n): ").strip().lower()
+                if overwrite_input in ('y', 'yes'):
+                    print(f"Overwriting the file '{filepath}' with new settings.")
+                    overwrite_existing_secrets = True
+                    break
+                elif overwrite_input in ('n', 'no'):
+                    print(f"Skipping writing to '{filepath}' as per user request.")
+                    return True
+                else:
+                    print("Please answer with 'y' or 'n'.")
+
+        print(f"Warning: The file '{filepath}' already exists. Overwriting with new settings.")
 
     # Ensure parent directory exists
     filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -117,6 +134,23 @@ def write_env_file(filepath: Path, comments: Optional[dict] = None, skip_when_ex
     # Set permissions to 600 (owner read/write only)
     filepath.chmod(0o600)
     return True
+
+def env_file_to_dict(filepath: Path) -> dict:
+    """Read a .env file and return a dictionary of key-value pairs."""
+    env_dict = {}
+    if not filepath.exists():
+        print(f"Warning: The file '{filepath}' does not exist. Returning empty dictionary.")
+        return env_dict
+
+    with filepath.open('r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '=' in line:
+                key, value = line.split('=', 1)
+                env_dict[key.strip()] = value.strip()
+    return env_dict
 
 class Domain:
     """
@@ -590,7 +624,7 @@ def main():
     dataimport_secrets_file = FLNET_CLIENT_ENV_DIR / 'dataimport-secrets.env'
     if not write_env_file(
         dataimport_secrets_file,
-        skip_when_exists=True,
+        skip_when_exists=False,
         MYSQL_PASSWORD=importer_db_password,
         MYSQL_ROOT_PASSWORD=importer_db_root_password,
         SQL_PASSWORD=importer_db_password,
@@ -605,7 +639,7 @@ def main():
     orch_api_secrets_file = FLNET_CLIENT_ENV_DIR / 'orch-secrets.env'
     if not write_env_file(
         orch_api_secrets_file,
-        skip_when_exists=True,
+        skip_when_exists=False,
         POSTGRES_PASSWORD=orch_db_password,
         QUARKUS_DATASOURCE_PASSWORD=orch_db_password
     ):
@@ -618,7 +652,7 @@ def main():
     learning_api_secrets_file = FLNET_CLIENT_ENV_DIR / 'local-learning-secrets.env'
     if not write_env_file(
         learning_api_secrets_file,
-        skip_when_exists=True,
+        skip_when_exists=False,
         POSTGRES_PASSWORD=learning_db_password,
         QUARKUS_DATASOURCE_PASSWORD=learning_db_password,
         QUARKUS_OIDC_CREDENTIALS_SECRET=learning_api_client_secret,
@@ -636,7 +670,7 @@ def main():
     keycloak_secrets_file = FLNET_CLIENT_ENV_DIR / 'keycloak-secrets.env'
     if not write_env_file(
         keycloak_secrets_file,
-        skip_when_exists=True,
+        skip_when_exists=False,
         KC_BOOTSTRAP_ADMIN_USERNAME=DEFAULT_KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME,
         POSTGRES_PASSWORD=keycloak_db_password,
         KC_DB_PASSWORD=keycloak_db_password,
@@ -703,6 +737,9 @@ def main():
         FRONTEND_IMAGE=GLOBAL_DOMAIN_TO_IMAGE.get(str(global_domain_obj), DEFAULT_FRONTEND_IMAGE)
     ):
         sys.exit(1)
+    keycloak_secrets_dict = env_file_to_dict(keycloak_secrets_file)
+    keycloak_username = keycloak_secrets_dict.get("KC_BOOTSTRAP_ADMIN_USERNAME")
+    keycloak_password = keycloak_secrets_dict.get("KC_BOOTSTRAP_ADMIN_PASSWORD")
 
     # ========================================================================
     # 6. Installation Summary
@@ -714,8 +751,8 @@ def main():
     print("After starting, you need to perform the following steps to finalize the setup:")
     print(f"1. Access the Keycloak admin console at {deployed_on_address}/auth/")
     print("2. Login with the temporary admin credentials:")
-    print(f"  Username: {DEFAULT_KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME} (see keycloak-secrets.env)")
-    print(f"  Password: {keycloak_bootstrap_admin_password}")
+    print(f"  Username: {keycloak_username}")
+    print(f"  Password: {keycloak_password}")
     print("3. Change the admin password immediately after logging in.")
     print("  If you have problems with the manage account page, please add + to the Web Origins of the account-console client in the master realm.")
     print("4. Change to the 'FLNet-Client' realm in Keycloak.")
