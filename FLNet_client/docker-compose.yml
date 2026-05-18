@@ -120,11 +120,7 @@ services:
   controller:
     image: gitlab.cosy.bio:5050/cosybio/federated-learning/federated_db/feature-cloud-controller/controller:latest
     environment:
-      - RELAY_ADDRESS_TCP=${GLOBAL_RELAY_TCP_ADDRESS}
-      - RELAY_URI_HTTP=${GLOBAL_RELAY_HTTP_URL}
-      - RELAY_TRUST_CERTIFICATE=true
       - WORKFLOW_LEARNING_API_WS_ADDRESS=ws://local-learning-api:8080
-      - LOG_LEVEL_STDOUT=INFO
     restart: always
     pull_policy: always
     depends_on:
@@ -136,64 +132,6 @@ services:
       - local-learning-network
     extra_hosts:
       - "host.docker.internal:host-gateway"
-
-  dataimporter-api:
-    image: gitlab.cosy.bio:5050/cosybio/federated-learning/federated_db/data-importer-api/data-importer-api:latest
-    env_file:
-      - env/dataimport-secrets.env
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"
-    environment:
-      - SQL_ENGINE=django.db.backends.mysql
-      - SQL_DATABASE=dataimport
-      - SQL_USER=user
-      - SQL_HOST=dataimport-db
-      - SQL_PORT=3306
-      - DEBUG=False
-      - KEYCLOAK_ENABLED='True'
-      - KEYCLOAK_REALM=FLNet-Client
-      - KEYCLOAK_CLIENT_ID=data-importer-api
-      - KEYCLOAK_SERVER_URL=http://keycloak:8080/auth
-      - HARMONIZED_API_URL=http://local-learning-api:8080
-      - HARMONIZED_WS_URL=ws://local-learning-api:8080
-      - CORS_ALLOWED_ORIGINS=${DEPLOYED_ON_ADDRESS}
-      - ALLOWED_HOSTS=dataimporter-api,${DEPLOYED_ON_DOMAIN},dataimporter-api:8000
-      - REMOTE_APP_EXECUTION_HTTP_SERVER_BASE_URL=http://orch-api:8080
-      - REMOTE_APP_EXECUTION_WS_PUBLIC_HOST=dataimporter-api
-      - REMOTE_APP_EXECUTION_WS_PUBLIC_PORT=8001
-      - REMOTE_APP_EXECUTION_WS_PUBLIC_PATH=run
-    restart: always
-    pull_policy: always
-    volumes:
-      - dataimport-files-volume:/usr/src/api/files
-    depends_on:
-      dataimport-db:
-        condition: service_healthy
-      local-learning-api:
-        condition: service_started
-      keycloak:
-        condition: service_started
-    networks:
-      - local-learning-network
-
-  dataimport-db:
-    image: mariadb:12.0.2
-    env_file:
-      - env/dataimport-secrets.env
-    environment:
-      - MYSQL_DATABASE=dataimport
-      - MYSQL_USER=user
-    volumes:
-      - dataimport-db-volume:/var/lib/mysql
-    restart: always
-    healthcheck:
-      test: "healthcheck.sh --connect --innodb_initialized"
-      start_period: 15s
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    networks:
-      - local-learning-network
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.5
@@ -285,8 +223,6 @@ services:
         condition: service_started
       controller:
         condition: service_started
-      dataimporter-api:
-        condition: service_started
       keycloak:
         condition: service_healthy
       local-learning-api:
@@ -322,8 +258,6 @@ services:
         condition: service_started
       controller:
         condition: service_started
-      dataimporter-api:
-        condition: service_started
       keycloak:
         condition: service_healthy
       local-learning-api:
@@ -337,7 +271,6 @@ services:
 
 volumes:
   local-learning-api-db-volume:
-  dataimport-db-volume:
   keycloak_postgres_volume:
   orch-data-volume:
     name: ${COMPOSE_PROJECT_NAME}_orch-data
