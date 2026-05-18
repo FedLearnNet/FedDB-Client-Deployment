@@ -69,12 +69,6 @@ MICROBAIOME_CONFIG = PredefinedConfiguration(
     global_tcp_port="0"
 )
 
-NOCONNECTION_CONFIG = PredefinedConfiguration(
-    name="None",
-    global_domain="https://federated-learning.net",
-    global_tcp_port="9152"
-)
-
 def gen_secret(length: int = 64) -> str:
     """
     Generate a URL-safe random string of given length.
@@ -339,48 +333,87 @@ def main():
     privkey_file = None
     global_domain_obj = None
     global_tcp_port = None
+    federated_learning_enabled = True
     # ========================================================================
-    # 0. Preconfiguration: Ask if user wants to use an already defined
-    # configuration or do a fresh setup.
-    # vars: global_domain_obj, global_tcp_port (indirectly frontend image)
+    # 0. Preconfiguration: Network and federation setup
+    # vars: global_domain_obj, global_tcp_port, federated_learning_enabled
     # ========================================================================
     network_defined = False
     while not network_defined:
-        print("An FLNet Client is part of a network allowing privacy preserving federated learning across multiple organizations.")
+        print("An FLNet Client connects to a global network to access data schemas (standards) and")
+        print("the app registry (ETL helpers, federated learning apps).")
+        print("When subscriping to a schema, the client informs the network that this schema is used and the network increments the subscription counter")
+        print("Otherwise, this is a read only connection and no data from the client is sent")
+        print("Optionally, the same network can also be used for federated queries and learning (asked next).")
+        print()
         print("Do you want to:")
         print("- join a preexisting network (join)")
-        print("- join a self deployed network (own)")
-        print("- Run a test instance without connecting to a global platform and therefore without federated capabilities (none)")
+        print("- join a self-deployed network (own)")
         input_preconfiguration = input("Enter 'join', 'own' or 'none': ").strip().lower()
         if input_preconfiguration not in ("join", "own", "none"):
             print("Invalid input. Please enter 'join', 'own' or 'none'.")
-            continue # continue getting input until valid
+            continue
+
         if input_preconfiguration == "join":
-            input_predefined_config = input("Enter the name of the network you want to join (flnet, daibetes, microbaiome)").strip()
+            input_predefined_config = input("Enter the name of the network you want to join (flnet, daibetes, microbaiome): ").strip()
             normalized_input = input_predefined_config.lower()
             if normalized_input not in ("flnet", "daibetes", "microbaiome"):
                 print("Invalid input. Please enter 'flnet', 'daibetes', 'microbaiome'")
-                continue # continue getting input until valid
+                continue
             for config in (FLNET_CONFIG, DAIBETES_CONFIG, MICROBAIOME_CONFIG):
                 if normalized_input == config.name.lower():
                     global_domain_obj = Domain(config.global_domain)
                     global_tcp_port = config.global_tcp_port
-                    print(f"Joining the '{config.name}' network with global domain '{config.global_domain}' and TCP port '{config.global_tcp_port}'.")
-                    print(f"The installer will use the predefined frontend image '{config.frontend_image}' for this configuration.")
+                    print(f"Joining the '{config.name}' network at '{config.global_domain}' (TCP port {config.global_tcp_port}).")
+                    print(f"The installer will use the predefined frontend image '{config.frontend_image}'.")
                     break
-            network_defined = True
+
         elif input_preconfiguration == "own":
-            print("You chose to join your own self-deployed network. You will be asked to provide the global domain and TCP port of the platform you want to connect to later in the setup.")
-            print("Make sure to have the global platform up and running and to have the relevant information about it at hand for the setup.")
-            network_defined = True
-        elif input_preconfiguration == "none":
-            print("You chose to run a test instance without connecting to a global platform. This means you will not have federated capabilities, but you can still test the local setup and use the client for non-federated use cases, so mostly data importing EXCLUDING the use of ETL apps.")
-            global_domain_obj = Domain(NOCONNECTION_CONFIG.global_domain)
-            global_tcp_port = NOCONNECTION_CONFIG.global_tcp_port
-            print("Using invalid global domain and TCP port for no-connection setup:")
-            print(f"Global domain: {global_domain_obj}")
-            print(f"Global TCP port: {global_tcp_port}")
-            network_defined = True
+            print("You chose to join your own self-deployed network.")
+            print("Make sure the global platform is up and running before continuing.")
+            while True:
+                global_domain_input = input(f"Enter the platform address with protocol (e.g., 'https://platform.example.com'). Press Enter for default ({DEFAULT_FULL_GLOBAL_ADDRESS}): ").strip()
+                if not global_domain_input:
+                    global_domain_input = DEFAULT_FULL_GLOBAL_ADDRESS
+                temp_global_domain_obj = Domain(global_domain_input)
+                if not temp_global_domain_obj.is_valid():
+                    if not temp_global_domain_obj.protocol_is_valid():
+                        print("ERROR: You must specify a protocol (http:// or https://).")
+                    elif not temp_global_domain_obj.domain_is_valid():
+                        print("ERROR: The domain name is not valid.")
+                    elif not temp_global_domain_obj.port_is_valid():
+                        print("ERROR: The port is not valid.")
+                    continue
+                global_domain_obj = temp_global_domain_obj
+                print(f"Connecting to platform at '{global_domain_obj}'.")
+                break
+            while True:
+                global_tcp_port = input(f"Enter the TCP relay port of the global platform (default {DEFAULT_PLATFORM_TCP_PORT}): ").strip()
+                if not global_tcp_port:
+                    global_tcp_port = DEFAULT_PLATFORM_TCP_PORT
+                    break
+                if validate_port(global_tcp_port):
+                    break
+                else:
+                    print(f"The port '{global_tcp_port}' is not valid. Please enter a number between 1 and 65535.")
+
+        # Step B: Federation participation (join and own only)
+        print()
+        print("The TCP relay and WebSocket connection enable federated queries and learning across organizations.")
+        print("This allows privacy-preserving computation on data distributed across multiple sites.")
+        while True:
+            federation_input = input("Do you want to enable federated queries and learning? (y/n): ").strip().lower()
+            if federation_input in ("y", "yes"):
+                federated_learning_enabled = True
+                print("Federated queries and learning will be enabled.")
+                break
+            elif federation_input in ("n", "no"):
+                federated_learning_enabled = False
+                print("Federated queries and learning will be disabled. WebSocket and relay will use non-resolving addresses.")
+                break
+            else:
+                print("Please answer with 'y' or 'n'.")
+        network_defined = True
 
     # ========================================================================
     # 1. Which interface to listen on?
@@ -571,48 +604,9 @@ def main():
             print()
 
     print()
-    # ========================================================================
-    # 3. Which FLNet platform to connect to?
-    # ========================================================================
-
-    # Create default global domain object (443 is default for HTTPS, so not specified)
-    if not global_domain_obj: # wasnt set by predefined config
-        while True:
-            global_domain_input = input(f"Enter the FLNet platform address with protocol (e.g., 'https://platform.example.com'). Press Enter for default ({DEFAULT_FULL_GLOBAL_ADDRESS}): ").strip()
-            if not global_domain_input:
-                global_domain_input = DEFAULT_FULL_GLOBAL_ADDRESS
-                break
-
-            temp_global_domain_obj = Domain(global_domain_input)
-            if not temp_global_domain_obj.is_valid():
-                if not temp_global_domain_obj.protocol_is_valid():
-                    print("ERROR: You must specify a protocol (http:// or https://).")
-                elif not temp_global_domain_obj.domain_is_valid():
-                    print("ERROR: The domain name is not valid.")
-                elif not temp_global_domain_obj.port_is_valid():
-                    print("ERROR: The port is not valid.")
-                continue
-
-            # overwrite default with valid input
-            global_domain_obj = temp_global_domain_obj
-            print(f"Connecting to FLNet platform at '{global_domain_obj}'.")
-            break
-
-    # get the tcp port
-    if not global_tcp_port: # wasnt set by predefined config
-        while True:
-            global_tcp_port = input(f"Enter the TCP port of the global platform for relay connections (default {DEFAULT_PLATFORM_TCP_PORT}): ").strip()
-            if not global_tcp_port:
-                global_tcp_port = DEFAULT_PLATFORM_TCP_PORT
-                break
-            if validate_port(global_tcp_port):
-                break
-            else:
-                print(f"The port '{global_tcp_port}' is not valid. Please enter a number between 1 and 65535.")
-    print()
     assert global_domain_obj is not None, "Global domain object should be set at this point. Script error."
     # ========================================================================
-    # 4. Generate Secrets
+    # 3. Generate Secrets
     # ========================================================================
     print("Securely generating database secrets...\n")
     # --- dataimport-secrets ---
@@ -699,6 +693,12 @@ def main():
 
     global_base_with_port = f"{global_domain_name}{global_port_suffix}"
 
+    # Federation host: real domain for WebSocket/relay when enabled, non-resolving otherwise
+    if federated_learning_enabled:
+        global_federation_host = global_domain_name
+    else:
+        global_federation_host = "federated-learning.invalid"
+
     # Set the complete domain with protocol and port as well as the bare domain
     # bare domain is required as ALLOWED_HOSTS in Django
     # as well as server_name in nginx
@@ -725,10 +725,12 @@ def main():
         EXPOSED_PORT=client_port,
         DEPLOYED_ON_ADDRESS=deployed_on_address,
         DEPLOYED_ON_DOMAIN=deployed_on_domain,
-        GLOBAL_LEARNING_API_URL=f"{global_protocol}://{global_base_with_port}/api",
-        GLOBAL_LEARNING_API_WEBSOCKET_URL=f"{global_ws_protocol}://{global_base_with_port}/api",
-        GLOBAL_SCHEMA_API_URL=f"{global_protocol}://{global_base_with_port}/data-modeler",
-        GLOBAL_RELAY_TCP_ADDRESS=f"{global_domain_name}:{global_tcp_port}",
+        GLOBAL_DOMAIN=global_base_with_port,
+        GLOBAL_HTTP_PROTOCOL=global_protocol,
+        GLOBAL_WS_PROTOCOL=global_ws_protocol,
+        GLOBAL_TCP_PORT=global_tcp_port,
+        FEDERATED_LEARNING_ENABLED="true" if federated_learning_enabled else "false",
+        GLOBAL_FEDERATION_HOST=global_federation_host,
         COMPOSE_PROFILES="no-ssl" if not ssl_folder else "ssl",
         SSL_CERT_PUBLIC_KEY=str(fullchain_file) if fullchain_file else "dummyfile",
         SSL_CERT_PRIVATE_KEY=str(privkey_file) if privkey_file else "dummyfile",

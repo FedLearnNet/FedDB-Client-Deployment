@@ -59,9 +59,9 @@ services:
     - QUARKUS_DATASOURCE_USERNAME=user
     - QUARKUS_REST_CLIENT_ORCH_DOCKER_SERVICE_URL=http://orch-api:8080
     - QUARKUS_REST_CLIENT_CONTROLLER_API_URL=http://controller:8000
-    - QUARKUS_REST_CLIENT_GLOBAL_SCHEMA_API_URL=${GLOBAL_SCHEMA_API_URL}
-    - QUARKUS_REST_CLIENT_GLOBAL_API_URL=${GLOBAL_LEARNING_API_URL}
-    - GLOBAL_SOCKET_URI=${GLOBAL_LEARNING_API_WEBSOCKET_URL}
+    - QUARKUS_REST_CLIENT_GLOBAL_SCHEMA_API_URL=${GLOBAL_HTTP_PROTOCOL}://${GLOBAL_DOMAIN}/data-modeler
+    - QUARKUS_REST_CLIENT_GLOBAL_API_URL=${GLOBAL_HTTP_PROTOCOL}://${GLOBAL_DOMAIN}/api
+    - GLOBAL_SOCKET_URI=${GLOBAL_WS_PROTOCOL}://${GLOBAL_FEDERATION_HOST}/api
     - QUARKUS_OIDC_DISCOVERY_ENABLED=false
     - QUARKUS_OIDC_AUTH_SERVER_URL=http://keycloak:8080/auth/realms/FLNet-Client
     - QUARKUS_OIDC_TOKEN_PATH=/protocol/openid-connect/token
@@ -121,6 +121,7 @@ services:
     image: gitlab.cosy.bio:5050/cosybio/federated-learning/federated_db/feature-cloud-controller/controller:latest
     environment:
       - WORKFLOW_LEARNING_API_WS_ADDRESS=ws://local-learning-api:8080
+      - RELAY_ADDRESS_TCP=${GLOBAL_FEDERATION_HOST}:${GLOBAL_TCP_PORT}
     restart: always
     pull_policy: always
     depends_on:
