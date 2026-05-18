@@ -409,7 +409,7 @@ def main():
                 break
             elif federation_input in ("n", "no"):
                 federated_learning_enabled = False
-                print("Federated queries and learning will be disabled. WebSocket and relay will use non-resolving addresses.")
+                print("Federated queries and learning will be disabled. Relevant addresses will be set to non-resolving addresses.")
                 break
             else:
                 print("Please answer with 'y' or 'n'.")
