@@ -64,8 +64,14 @@ DAIBETES_CONFIG = PredefinedConfiguration(
 
 MICROBAIOME_CONFIG = PredefinedConfiguration(
     name="MicrobAIome",
-    global_domain="https://microb-ai-net.federated-learning.net",
-    global_tcp_port="9154"
+    global_domain="https://federated-learning.invalid",
+    global_tcp_port="0"
+)
+
+NOCONNECTION_CONFIG = PredefinedConfiguration(
+    name="None",
+    global_domain="https://federated-learning.net",
+    global_tcp_port="9152"
 )
 
 def gen_secret(length: int = 64) -> str:
@@ -304,18 +310,23 @@ def main():
     # configuration or do a fresh setup.
     # vars: global_domain_obj, global_tcp_port (indirectly frontend image)
     # ========================================================================
-    print("An FLNet Client is part of a network allowing privacy preserving federated learning across multiple organizations.")
-    print("Do you want to join a preexisting network?")
-    while True:
-        input_predefined_config = input("Enter the name of the network you want to join (flnet, daibetes, microbaiome) or enter own to join your own deployed network: ").strip()
-        normalized_input = input_predefined_config.lower()
-        if normalized_input not in ("flnet", "daibetes", "microbaiome", "own"):
-            print("Invalid input. Please enter 'flnet', 'daibetes', 'microbaiome' or 'own'.")
+    network_defined = False
+    while not network_defined:
+        print("An FLNet Client is part of a network allowing privacy preserving federated learning across multiple organizations.")
+        print("Do you want to:")
+        print("- join a preexisting network (join)")
+        print("- join a self deployed network (own)")
+        print("- Run a test instance without connecting to a global platform and therefore without federated capabilities (none)")
+        input_preconfiguration = input("Enter 'join', 'own' or 'none': ").strip().lower()
+        if input_preconfiguration not in ("join", "own", "none"):
+            print("Invalid input. Please enter 'join', 'own' or 'none'.")
             continue # continue getting input until valid
-        if normalized_input == "own":
-            print("Proceeding with custom configuration. You will be asked to provide the relevant parameters in the next steps.")
-            break # own config
-        else:
+        if input_preconfiguration == "join":
+            input_predefined_config = input("Enter the name of the network you want to join (flnet, daibetes, microbaiome)").strip()
+            normalized_input = input_predefined_config.lower()
+            if normalized_input not in ("flnet", "daibetes", "microbaiome"):
+                print("Invalid input. Please enter 'flnet', 'daibetes', 'microbaiome'")
+                continue # continue getting input until valid
             for config in (FLNET_CONFIG, DAIBETES_CONFIG, MICROBAIOME_CONFIG):
                 if normalized_input == config.name.lower():
                     global_domain_obj = Domain(config.global_domain)
@@ -323,7 +334,20 @@ def main():
                     print(f"Joining the '{config.name}' network with global domain '{config.global_domain}' and TCP port '{config.global_tcp_port}'.")
                     print(f"The installer will use the predefined frontend image '{config.frontend_image}' for this configuration.")
                     break
-            break # predefined config selected
+            network_defined = True
+        elif input_preconfiguration == "own":
+            print("You chose to join your own self-deployed network. You will be asked to provide the global domain and TCP port of the platform you want to connect to later in the setup.")
+            print("Make sure to have the global platform up and running and to have the relevant information about it at hand for the setup.")
+            network_defined = True
+        elif input_preconfiguration == "none":
+            print("You chose to run a test instance without connecting to a global platform. This means you will not have federated capabilities, but you can still test the local setup and use the client for non-federated use cases, so mostly data importing EXCLUDING the use of ETL apps.")
+            global_domain_obj = Domain(NOCONNECTION_CONFIG.global_domain)
+            global_tcp_port = NOCONNECTION_CONFIG.global_tcp_port
+            print("Using invalid global domain and TCP port for no-connection setup:")
+            print(f"Global domain: {global_domain_obj}")
+            print(f"Global TCP port: {global_tcp_port}")
+            network_defined = True
+
     # ========================================================================
     # 1. Which interface to listen on?
     # vars: exposed_address, client_port
