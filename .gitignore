@@ -1,0 +1,10 @@
+# Coding related stuff
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.vscode/
+.idea/
+
+# Mac
+.DS_Store
