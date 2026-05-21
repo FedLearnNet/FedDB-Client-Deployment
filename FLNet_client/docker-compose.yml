@@ -136,6 +136,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.5
+    restart: always
     command:
       - "start"
       - "--import-realm"
@@ -187,6 +188,7 @@ services:
 
   keycloak-postgres:
     image: postgres:17.5
+    restart: always
     volumes:
       - keycloak_postgres_volume:/var/lib/postgresql
     env_file:
