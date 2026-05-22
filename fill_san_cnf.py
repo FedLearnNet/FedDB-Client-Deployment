@@ -46,20 +46,21 @@ def main():
         sys.exit(1)
 
     print("--- Distinguished Name (who the certificate is issued to) ---\n")
-    country   = ask("Country code (2 letters)", "DE")
-    if len(country) != 2 or not country.isalpha():
+    print("Only Common Name (CN) is required. Other fields are optional.\n")
+    country   = ask("Country code (2 letters)", "DE", required=False)
+    if country and (len(country) != 2 or not country.isalpha()):
         print("WARNING: Country code should be exactly 2 letters (e.g. DE, US, AT).")
-    state     = ask("State or province", "Bavaria")
-    city      = ask("City", "Munich")
-    org       = ask("Organization name", "My Hospital GmbH")
-    unit      = ask("Organizational unit", "IT Department")
+    state     = ask("State or province", "Bavaria", required=False)
+    city      = ask("City", "Munich", required=False)
+    org       = ask("Organization name", "My Hospital GmbH", required=False)
+    unit      = ask("Organizational unit", "IT Department", required=False)
     cn        = ask("Common name (primary hostname or IP)", "myserver.example.com")
 
     print("\n--- Subject Alternative Names (SANs) ---\n")
     print("SANs tell browsers which hostnames/IPs this certificate is valid for.")
     print("Modern browsers require SANs — the Common Name above alone is not enough.\n")
 
-    dns_names = ask_list("DNS hostnames", "myserver.example.com")
+    dns_names = ask_list("DNS hostnames (leave blank to skip)", "myserver.example.com")
     ip_addrs  = ask_list("IP addresses (leave blank to skip)", "192.168.1.100")
 
     if not dns_names and not ip_addrs:
