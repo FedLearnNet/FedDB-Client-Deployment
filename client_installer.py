@@ -520,9 +520,8 @@ def main():
             print("IMPORTANT: The certificate files do not exist yet.")
             print("  Before running 'docker compose up', you MUST:")
             print("  Either generate the certs yourself or use the helper:")
-            print("  1. Run: python3 create_self_signed_certs_config.py")
-            print("  2. Run: ./create_self_signed_certs.sh")
-            print("  The installer will remind you at the end.")
+            print("  python3 create_self_signed_certs.py")
+            print("  This installer will remind you at the end.")
             input("  Press Enter to continue...")
             break
 
