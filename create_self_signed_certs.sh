@@ -42,6 +42,13 @@ if grep -q 'TODO_' "${SAN_CNF}"; then
     exit 1
 fi
 
+# Check that alt_names section has at least one entry
+if ! grep -E '^(DNS|IP)\.' "${SAN_CNF}" >/dev/null; then
+    echo "ERROR: ${SAN_CNF} has no DNS or IP entries in [alt_names] section."
+    echo "  At least one DNS hostname or IP address is required."
+    exit 1
+fi
+
 echo "Using config: ${SAN_CNF}"
 echo "Validity    : ${DAYS} days"
 echo "Output cert : ${CERT_OUT}"
@@ -50,7 +57,7 @@ echo ""
 
 openssl req \
     -x509 \
-    -newkey rsa:2048 \
+    -newkey rsa \
     -nodes \
     -keyout "${KEY_OUT}" \
     -out    "${CERT_OUT}" \
