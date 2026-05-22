@@ -328,6 +328,7 @@ def main():
     domain_obj = None
     enable_ssl_termination_in_client = False
     ssl_files_given = False
+    use_self_signed_certs = False
     ssl_path = None
     fullchain_file = None
     privkey_file = None
@@ -501,32 +502,59 @@ def main():
 
     # SSL certificate files retrieval loop
     while enable_ssl_termination_in_client:
-        print("Please provide the paths to your SSL certificate files.")
-        cert_input = input("Enter the path to your public certificate file (e.g. fullchain.pem): ").strip()
-        fullchain_file = Path(cert_input).resolve()
-        if not fullchain_file.exists():
-            print(f"ERROR: The file '{cert_input}' does not exist.")
-            continue
+        print("How do you want to provide SSL certificates?")
+        print("  1) Provide existing certificate files (e.g. from Let's Encrypt / certbot)")
+        print("  2) Use self-signed certificates (generated separately via fill_san_cnf.py + create_self_signed_certs.sh)")
+        ssl_source_input = input("Enter '1' or '2': ").strip()
 
-        key_input = input("Enter the path to your private key file (e.g. privkey.pem): ").strip()
-        privkey_file = Path(key_input).resolve()
-        if not privkey_file.exists():
-            print(f"ERROR: The file '{key_input}' does not exist.")
-            continue
+        if ssl_source_input == '2':
+            # Self-signed path: cert files don't exist yet, set paths to the predefined location
+            self_signed_dir = BASE_DIR_INSTALLER_SCRIPT / 'FLNet_client' / 'self_signed_certs'
+            fullchain_file = self_signed_dir / 'fullchain.pem'
+            privkey_file   = self_signed_dir / 'privkey.pem'
+            use_self_signed_certs = True
+            ssl_files_given = True
+            print(f"Self-signed certificate paths set:")
+            print(f"  Certificate : {fullchain_file}")
+            print(f"  Private key : {privkey_file}")
+            print("IMPORTANT: The certificate files do not exist yet.")
+            print("  Before running 'docker compose up', you MUST:")
+            print("  1. Run: python3 fill_san_cnf.py")
+            print("  2. Run: ./create_self_signed_certs.sh")
+            print("  The installer will remind you at the end.")
+            input("  Press Enter to continue...")
+            break
 
-        ssl_files_given = True
-        # success
-        print(f"SSL certificate files found: '{fullchain_file}' and '{privkey_file}'.")
-        print("✓ SSL configuration completed.")
-        print("WARNING:")
-        print("  The deployment does NOT take care of certification renewal and does NOT automatically reload the certificates on renewal.")
-        print("  You need to renew the certs yourself e.g. via certbot.")
-        print("  To reload the renewed certificates, you need to reload the deployed nginx reverse proxy via the following command:")
-        print("  docker exec <container_name_or_id> nginx -s reload")
-        print("  The relevant container should be called 'FLNet-client-reverse-proxy-encrypted-1'")
-        print("  If you're using certbot, you can add this command to the relevant deploy/reload hooks to automate the process!")
-        input("  Press Enter to continue...")
-        break
+        elif ssl_source_input == '1':
+            print("Please provide the paths to your SSL certificate files.")
+            cert_input = input("Enter the path to your public certificate file (e.g. fullchain.pem): ").strip()
+            fullchain_file = Path(cert_input).resolve()
+            if not fullchain_file.exists():
+                print(f"ERROR: The file '{cert_input}' does not exist.")
+                continue
+
+            key_input = input("Enter the path to your private key file (e.g. privkey.pem): ").strip()
+            privkey_file = Path(key_input).resolve()
+            if not privkey_file.exists():
+                print(f"ERROR: The file '{key_input}' does not exist.")
+                continue
+
+            ssl_files_given = True
+            print(f"SSL certificate files found: '{fullchain_file}' and '{privkey_file}'.")
+            print("✓ SSL configuration completed.")
+            print("WARNING:")
+            print("  The deployment does NOT take care of certification renewal and does NOT automatically reload the certificates on renewal.")
+            print("  You need to renew the certs yourself e.g. via certbot.")
+            print("  To reload the renewed certificates, you need to reload the deployed nginx reverse proxy via the following command:")
+            print("  docker exec <container_name_or_id> nginx -s reload")
+            print("  The relevant container should be called 'FLNet-client-reverse-proxy-encrypted-1'")
+            print("  If you're using certbot, you can add this command to the relevant deploy/reload hooks to automate the process!")
+            input("  Press Enter to continue...")
+            break
+
+        else:
+            print("Please enter '1' or '2'.")
+            continue
 
     # Final warnings for potential misconfigurations
     # Warning 0: Using a domain without SSL encryption
@@ -746,6 +774,11 @@ def main():
     # ========================================================================
     print("⚠️")
     print("The FLNet Client is not started yet. To start it, please do the following:\n")
+    if use_self_signed_certs:
+        print("Before starting, you MUST generate your self-signed certificates:")
+        print(f"  python3 {BASE_DIR_INSTALLER_SCRIPT / 'fill_san_cnf.py'}")
+        print(f"  {BASE_DIR_INSTALLER_SCRIPT / 'create_self_signed_certs.sh'}")
+        print("")
     print(f"cd {FLNET_CLIENT_DIR}")
     print("docker compose up -d\n")
     print("After starting, you need to perform the following steps to finalize the setup:")

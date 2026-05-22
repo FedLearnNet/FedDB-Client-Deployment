@@ -1,0 +1,48 @@
+# OpenSSL configuration for generating a self-signed certificate with Subject Alternative Names (SAN).
+# Run fill_san_cnf.py (in the repo root) to fill in the TODO fields interactively,
+# then run create_self_signed_certs.sh to generate the certificate and key.
+
+[req]
+default_bits       = 2048
+prompt             = no
+default_md         = sha256
+distinguished_name = dn
+x509_extensions    = v3_ca
+
+[dn]
+# 2-letter ISO country code (e.g. DE, US, AT)
+C  = TODO_COUNTRY_CODE
+
+# Full state or province name (e.g. Bavaria)
+ST = TODO_STATE_OR_PROVINCE
+
+# City or locality (e.g. Munich)
+L  = TODO_CITY
+
+# Organization name (e.g. My Hospital GmbH)
+O  = TODO_ORGANIZATION
+
+# Organizational unit / department (e.g. IT Department)
+OU = TODO_ORGANIZATIONAL_UNIT
+
+# Common Name: primary hostname or IP this certificate is issued for
+CN = TODO_COMMON_NAME
+
+[v3_ca]
+basicConstraints   = CA:FALSE
+keyUsage           = digitalSignature, keyEncipherment
+extendedKeyUsage   = serverAuth
+subjectAltName     = @alt_names
+
+[alt_names]
+# At least one DNS or IP entry is required.
+# Add or remove lines as needed.
+
+# Primary hostname (e.g. myserver.example.com or just myserver for intranet)
+DNS.1 = TODO_PRIMARY_HOSTNAME
+
+# Additional hostname - remove this line if not needed
+# DNS.2 = TODO_ADDITIONAL_HOSTNAME
+
+# IP address - remove this line if not needed (useful for direct IP access)
+# IP.1  = TODO_IP_ADDRESS
