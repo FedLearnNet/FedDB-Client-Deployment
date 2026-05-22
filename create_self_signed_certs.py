@@ -124,15 +124,20 @@ def generate_san_config(country: str, state: str, city: str, org: str, unit: str
         alt_lines.append(f"IP.{i}  = {ip}")
     alt_block = "\n".join(alt_lines)
 
-    # Replace [dn] section (clean, no comments)
-    dn_section = f"""\
-[dn]
-C  = {country.upper() if country else ''}
-ST = {state}
-L  = {city}
-O  = {org}
-OU = {unit}
-CN = {cn}"""
+    # Replace [dn] section (clean, no comments, only include non-empty fields)
+    dn_lines = ["[dn]"]
+    if country:
+        dn_lines.append(f"C  = {country.upper()}")
+    if state:
+        dn_lines.append(f"ST = {state}")
+    if city:
+        dn_lines.append(f"L  = {city}")
+    if org:
+        dn_lines.append(f"O  = {org}")
+    if unit:
+        dn_lines.append(f"OU = {unit}")
+    dn_lines.append(f"CN = {cn}")
+    dn_section = "\n".join(dn_lines)
 
     template_content = re.sub(
         r'\[dn\].*?(?=\n\[)',
@@ -191,13 +196,9 @@ def generate_certificate(days: int) -> None:
     print("You can verify the certificate with:")
     print(f"  openssl x509 -in {CERT_OUT} -text -noout")
     print()
-    print("Next step: start the FLNet Client:")
-    print("  cd FLNet_client && docker compose up -d")
-    print()
     print("NOTE: Self-signed certificates will show a browser warning.")
     print("  You need to add this certificate to your browser's or OS's trust store")
-    print("  to avoid the warning. For production use, consider a certificate from")
-    print("  a trusted CA (e.g. Let's Encrypt via certbot).")
+    print("  to avoid the warning.")
 
 
 def main():
