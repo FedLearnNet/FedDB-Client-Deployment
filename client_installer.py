@@ -504,7 +504,7 @@ def main():
     while enable_ssl_termination_in_client:
         print("How do you want to provide SSL certificates?")
         print("  1) Provide existing certificate files (e.g. from Let's Encrypt / certbot)")
-        print("  2) Use self-signed certificates (generated separately via fill_san_cnf.py + create_self_signed_certs.sh)")
+        print("  2) Use self-signed certificates (generated separately via create_self_signed_certs_config.py + create_self_signed_certs.sh)")
         ssl_source_input = input("Enter '1' or '2': ").strip()
 
         if ssl_source_input == '2':
@@ -519,7 +519,8 @@ def main():
             print(f"  Private key : {privkey_file}")
             print("IMPORTANT: The certificate files do not exist yet.")
             print("  Before running 'docker compose up', you MUST:")
-            print("  1. Run: python3 fill_san_cnf.py")
+            print("  Either generate the certs yourself or use the helper:")
+            print("  1. Run: python3 create_self_signed_certs_config.py")
             print("  2. Run: ./create_self_signed_certs.sh")
             print("  The installer will remind you at the end.")
             input("  Press Enter to continue...")
@@ -773,10 +774,10 @@ def main():
     # 6. Installation Summary
     # ========================================================================
     print("⚠️")
-    print("The FLNet Client is not started yet. To start it, please do the following:\n")
+    print("The FL-Net Client is not started yet. To start it, please do the following:\n")
     if use_self_signed_certs:
         print("Before starting, you MUST generate your self-signed certificates:")
-        print(f"  python3 {BASE_DIR_INSTALLER_SCRIPT / 'fill_san_cnf.py'}")
+        print(f"  python3 {BASE_DIR_INSTALLER_SCRIPT / 'create_self_signed_certs_config.py'}")
         print(f"  {BASE_DIR_INSTALLER_SCRIPT / 'create_self_signed_certs.sh'}")
         print("")
     print(f"cd {FLNET_CLIENT_DIR}")
@@ -788,8 +789,8 @@ def main():
     print(f"  Password: {keycloak_password}")
     print("3. Change the admin password immediately after logging in.")
     print("  If you have problems with the manage account page, please add + to the Web Origins of the account-console client in the master realm.")
-    print("4. Change to the 'FLNet-Client' realm in Keycloak.")
-    print("5. Create a user there. Give him the appropiate group (e.g. 'Admin') and tick is Email as verified. Users without a Group cannot access the FLNet Client!")
+    print("4. Change to the 'FL-Net-Client' realm in Keycloak.")
+    print("5. Create a user there. Give him the appropiate group (e.g. 'Admin') and tick is Email as verified. Users without a Group cannot access the FL-Net Client!")
     print("6. If you want to have automatic updates: All containers are set with a watchtower label.")
     print("  More information: https://github.com/containrrr/watchtower")
     print("For more information, please refer to the deployment documentation:")
