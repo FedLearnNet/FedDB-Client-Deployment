@@ -187,7 +187,8 @@ def generate_certificate(days: int) -> None:
         sys.exit(1)
 
     # Set file permissions
-    os.chmod(str(KEY_OUT), 0o600)
+    # Needs read for other so that the user in the nginx container can read the certs
+    os.chmod(str(KEY_OUT), 0o644)
     os.chmod(str(CERT_OUT), 0o644)
 
     print()
