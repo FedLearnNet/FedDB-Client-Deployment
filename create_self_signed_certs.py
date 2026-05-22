@@ -146,7 +146,7 @@ def generate_san_config(country: str, state: str, city: str, org: str, unit: str
         flags=re.DOTALL
     )
 
-    # Replace [alt_names] section (clean, no comments)
+    # Replace [alt_names] section
     alt_section = f"""\
 [alt_names]
 {alt_block}"""
