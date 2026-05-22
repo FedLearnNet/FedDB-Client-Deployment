@@ -327,7 +327,7 @@ def main():
     client_port = None
     domain_obj = None
     enable_ssl_termination_in_client = False
-    ssl_folder = None
+    ssl_files_given = False
     ssl_path = None
     fullchain_file = None
     privkey_file = None
@@ -453,7 +453,7 @@ def main():
 
     # ========================================================================
     # 2. Domain configuration including SSL
-    # vars: domain_name, host_port, ssl_folder, fullchain_file, privkey_file
+    # vars: domain_name, host_port, ssl_files_given, fullchain_file, privkey_file
     # ========================================================================
     # Domain Name and host port retrieval loop
     print("You can optionally set the domain you are using for your FLNet Client.")
@@ -501,22 +501,22 @@ def main():
 
     # SSL certificate files retrieval loop
     while enable_ssl_termination_in_client:
-        print("Please provide the folder containing your SSL certificate files (fullchain.pem and privkey.pem).")
-        ssl_folder = input("Enter the path to the folder containing fullchain.pem and privkey.pem: ").strip()
-        ssl_path = Path(ssl_folder)
-        if not ssl_path.is_dir():
-            print(f"ERROR: The folder '{ssl_folder}' does not exist.")
+        print("Please provide the paths to your SSL certificate files.")
+        cert_input = input("Enter the path to your public certificate file (e.g. fullchain.pem): ").strip()
+        fullchain_file = Path(cert_input).resolve()
+        if not fullchain_file.exists():
+            print(f"ERROR: The file '{cert_input}' does not exist.")
             continue
-        # ensure we get the absolute path
-        ssl_path = ssl_path.resolve()
 
-        fullchain_file = ssl_path / 'fullchain.pem'
-        privkey_file = ssl_path / 'privkey.pem'
-        if not fullchain_file.exists() or not privkey_file.exists():
-            print(f"ERROR: Required files fullchain.pem and privkey.pem not found in '{ssl_folder}'.")
+        key_input = input("Enter the path to your private key file (e.g. privkey.pem): ").strip()
+        privkey_file = Path(key_input).resolve()
+        if not privkey_file.exists():
+            print(f"ERROR: The file '{key_input}' does not exist.")
             continue
+
+        ssl_files_given = True
         # success
-        print(f"SSL certificate files found in '{ssl_folder}'.")
+        print(f"SSL certificate files found: '{fullchain_file}' and '{privkey_file}'.")
         print("✓ SSL configuration completed.")
         print("WARNING:")
         print("  The deployment does NOT take care of certification renewal and does NOT automatically reload the certificates on renewal.")
@@ -545,7 +545,7 @@ def main():
             sys.exit("Aborting setup as per user request.")
 
     # Warning 1: Exposed to network without SSL encryption
-    if exposed_address != "localhost" and not ssl_folder:
+    if exposed_address != "localhost" and not ssl_files_given:
         print("WARNING: The FLNet Client is exposed to a non localhost IP without SSL encryption.")
         print("  This means all communication (including passwords) is unencrypted and potentially insecure!")
         # with HTTPS -> User just needs to ensure SSL termination is done externally
@@ -570,7 +570,7 @@ def main():
         print()
 
     # Warning 2: Domain provided without SSL certificates
-    if domain_obj is not None and domain_obj.protocol() == 'https' and not ssl_folder:
+    if domain_obj is not None and domain_obj.protocol() == 'https' and not ssl_files_given:
         print("WARNING: You specified HTTPS protocol but did not provide SSL certificates.")
         print("  Without SSL certificates, the client cannot serve HTTPS traffic directly.")
         print("  You MUST use an external reverse proxy (e.g., nginx, Caddy) to handle SSL termination.")
@@ -583,8 +583,8 @@ def main():
     if domain_obj is not None and exposed_address == "localhost":
         print("WARNING: You specified a domain name, but the FLNet Client is only listening on localhost.")
         print(f"  Make sure you have a reverse proxy forwarding traffic from {str(domain_obj)} to localhost:{client_port} or use a reverse tunnel.")
-        if ssl_folder:
-            print("  Additionally, you configured SSL certificates for localhost-only access.")
+        if ssl_files_given:
+            print(f"  Additionally, you configured SSL certificates ('{fullchain_file}', '{privkey_file}') for localhost-only access.")
             print("  This is unusual - SSL is typically not needed for localhost. Consider having your")
             print("  reverse proxy handle SSL termination instead. You can abort via Ctrl+C and re-run the installer without SSL.")
         input("Press Enter to continue...")
@@ -731,7 +731,7 @@ def main():
         GLOBAL_TCP_PORT=global_tcp_port,
         FEDERATED_LEARNING_ENABLED="true" if federated_learning_enabled else "false",
         GLOBAL_FEDERATION_HOST=global_federation_host,
-        COMPOSE_PROFILES="no-ssl" if not ssl_folder else "ssl",
+        COMPOSE_PROFILES="no-ssl" if not ssl_files_given else "ssl",
         SSL_CERT_PUBLIC_KEY=str(fullchain_file) if fullchain_file else "dummyfile",
         SSL_CERT_PRIVATE_KEY=str(privkey_file) if privkey_file else "dummyfile",
         FRONTEND_IMAGE=GLOBAL_DOMAIN_TO_IMAGE.get(str(global_domain_obj), DEFAULT_FRONTEND_IMAGE)
