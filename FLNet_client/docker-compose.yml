@@ -61,7 +61,7 @@ services:
     - QUARKUS_REST_CLIENT_CONTROLLER_API_URL=http://controller:8000
     - QUARKUS_REST_CLIENT_GLOBAL_SCHEMA_API_URL=${GLOBAL_HTTP_PROTOCOL}://${GLOBAL_DOMAIN}/data-modeler
     - QUARKUS_REST_CLIENT_GLOBAL_API_URL=${GLOBAL_HTTP_PROTOCOL}://${GLOBAL_DOMAIN}/api
-    - GLOBAL_SOCKET_URI=${GLOBAL_WS_PROTOCOL}://${GLOBAL_FEDERATION_HOST}/api
+    - FLNET_GLOBAL_SOCKET_URI=${GLOBAL_WS_PROTOCOL}://${GLOBAL_FEDERATION_HOST}/api
     - QUARKUS_OIDC_DISCOVERY_ENABLED=false
     - QUARKUS_OIDC_AUTH_SERVER_URL=http://keycloak:8080/auth/realms/FLNet-Client
     - QUARKUS_OIDC_TOKEN_PATH=/protocol/openid-connect/token
@@ -71,7 +71,6 @@ services:
     - QUARKUS_KEYCLOAK_ADMIN_CLIENT_REALM=FLNet-Client
     - QUARKUS_OIDC_CLIENT_ID=local-learning-api
     - QUARKUS_KEYCLOAK_ADMIN_CLIENT_CLIENT_ID=local-learning-api
-    - CONTAINER_NETWORK_NAMES=${COMPOSE_PROJECT_NAME}_local-learning-network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
